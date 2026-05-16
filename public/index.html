@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SNIP — Link Shortener</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07080d;--glass:rgba(255,255,255,0.04);--glass-border:rgba(255,255,255,0.08);
+  --glass-hover:rgba(255,255,255,0.07);--cyan:#00d4ff;--cyan-dim:rgba(0,212,255,0.12);
+  --cyan-glow:rgba(0,212,255,0.28);--violet:#8b5cf6;--violet-dim:rgba(139,92,246,0.12);
+  --green:#10d9a0;--green-dim:rgba(16,217,160,0.12);--red:#ff4d6d;--red-dim:rgba(255,77,109,0.12);--orange:#f97316;
+  --orange-dim:rgba(249,115,22,0.12);--text:#e8eaf2;--muted:#5a6080;--muted2:#3a3f5c;
+  --font:'Bricolage Grotesque',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg:#ffffff;
+    --glass:rgba(0,0,0,0.04);
+    --glass-border:rgba(0,0,0,0.08);
+    --glass-hover:rgba(0,0,0,0.07);
+    --cyan:#00d4ff;
+    --cyan-dim:rgba(0,212,255,0.12);
+    --cyan-glow:rgba(0,212,255,0.28);
+    --violet:#8b5cf6;
+    --violet-dim:rgba(139,92,246,0.12);
+    --green:#10d9a0;
+    --green-dim:rgba(16,217,160,0.12);
+    --red:#ff4d6d;
+    --red-dim:rgba(255,77,109,0.12);
+    --orange:#f97316;
+    --orange-dim:rgba(249,115,22,0.12);
+    --text:#07080d;
+    --muted:#6b7280;
+    --muted2:#9ca3af;
+    --font:'Bricolage Grotesque',sans-serif;
+    --mono:'JetBrains Mono',monospace;
+  }
+  /* light-mode form inputs for better contrast */
+  .url-input,
+  .ttl-input {
+    background:rgba(255,255,255,.4);
+    border:1px solid var(--muted2);
+    color:var(--text);
+  }
+  .url-input::placeholder,
+  .ttl-input::placeholder {
+    /* darker than muted2 so it reads on pale background */
+    color:var(--muted);
+  }
+  .url-input:focus {
+    border-color:var(--cyan);
+    box-shadow:0 0 0 3px var(--cyan-dim);
+  }
+  .ttl-input:focus {
+    border-color:var(--orange);
+    box-shadow:0 0 0 3px var(--orange-dim);
+  }
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow-x:hidden;}
+#bg-canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;}
+.shell{position:relative;z-index:1;max-width:780px;margin:0 auto;padding:0 1.5rem 8rem;}
+
+/* Nav */
+nav{display:flex;align-items:center;justify-content:space-between;padding:2rem 0 0;margin-bottom:4rem;}
+.logo{font-size:1.1rem;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:#fff;}
+
+/* light-mode overrides for elements with fixed light colors */
+@media (prefers-color-scheme: light) {
+  .logo { color: var(--text); }
+}
+.logo-dot{color:var(--cyan);}
+.nav-pill{font-family:var(--mono);font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);border:1px solid var(--glass-border);padding:.35rem .9rem;border-radius:999px;background:var(--glass);}
+
+/* Hero */
+.hero{text-align:center;margin-bottom:3rem;animation:fadeUp .7s cubic-bezier(.16,1,.3,1) both;}
+.hero-tag{display:inline-flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);background:var(--cyan-dim);border:1px solid rgba(0,212,255,.2);padding:.4rem 1rem;border-radius:999px;margin-bottom:1.5rem;}
+.hero-tag-dot{width:6px;height:6px;background:var(--cyan);border-radius:50%;animation:pulsedot 2s infinite;}
+.hero h1{font-size:clamp(2.8rem,7vw,5rem);font-weight:800;line-height:.95;letter-spacing:-.04em;background:linear-gradient(135deg,#fff 0%,#c8d0ff 40%,var(--cyan) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:1rem;}
+.hero p{font-size:.95rem;color:var(--muted);line-height:1.7;max-width:400px;margin:0 auto;}
+
+/* Card */
+.card{background:linear-gradient(135deg,rgba(255,255,255,.055) 0%,rgba(255,255,255,.02) 100%);border:1px solid var(--glass-border);border-radius:24px;padding:2rem;backdrop-filter:blur(20px);box-shadow:0 0 0 1px rgba(0,0,0,.3),0 32px 64px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.08);animation:fadeUp .75s .08s cubic-bezier(.16,1,.3,1) both;margin-bottom:1.5rem;}
+.input-label{font-family:var(--mono);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem;display:block;}
+.input-row{display:flex;gap:.75rem;align-items:center;margin-bottom:1rem;}
+.url-input{flex:1;background:rgba(0,0,0,.4);border:1px solid var(--muted2);border-radius:14px;padding:.9rem 1.25rem;font-family:var(--mono);font-size:.85rem;color:var(--text);outline:none;transition:border-color .2s,box-shadow .2s;}
+.url-input::placeholder{color:var(--muted2);}
+.url-input:focus{border-color:var(--cyan);box-shadow:0 0 0 3px var(--cyan-dim);}
+.ttl-row{display:flex;align-items:center;gap:.75rem;margin-bottom:0;}
+.ttl-input{width:140px;background:rgba(0,0,0,.4);border:1px solid var(--muted2);border-radius:10px;padding:.6rem 1rem;font-family:var(--mono);font-size:.8rem;color:var(--text);outline:none;transition:border-color .2s;}
+.ttl-input::placeholder{color:var(--muted2);}
+.ttl-input:focus{border-color:var(--orange);box-shadow:0 0 0 3px var(--orange-dim);}
+.ttl-hint{font-family:var(--mono);font-size:.65rem;color:var(--muted);letter-spacing:.04em;}
+
+.btn-shorten{flex-shrink:0;background:linear-gradient(135deg,var(--cyan) 0%,#0099cc 100%);color:#07080d;border:none;border-radius:14px;padding:.9rem 1.6rem;font-family:var(--font);font-size:.9rem;font-weight:700;cursor:pointer;transition:opacity .15s,transform .1s,box-shadow .2s;box-shadow:0 0 24px var(--cyan-glow);position:relative;overflow:hidden;white-space:nowrap;}
+.btn-shorten::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.2) 0%,transparent 60%);}
+.btn-shorten:hover{opacity:.9;box-shadow:0 0 36px var(--cyan-glow);}
+.btn-shorten:active{transform:scale(.97);}
+.btn-shorten:disabled{opacity:.35;cursor:not-allowed;box-shadow:none;}
+.btn-shorten.loading{color:transparent;}
+.btn-shorten.loading::after{content:'';position:absolute;inset:0;margin:auto;width:16px;height:16px;border:2px solid rgba(7,8,13,.3);border-top-color:#07080d;border-radius:50%;animation:spin .55s linear infinite;}
+
+/* Result */
+.result{margin-top:1.25rem;overflow:hidden;max-height:0;transition:max-height .5s cubic-bezier(.16,1,.3,1);}
+.result.open{max-height:180px;}
+.result-inner{border:1px solid var(--glass-border);border-radius:16px;padding:1.1rem 1.25rem;display:flex;align-items:center;gap:1rem;background:var(--glass);}
+.result-inner.success{border-color:rgba(16,217,160,.25);background:rgba(16,217,160,.05);}
+.result-inner.error  {border-color:rgba(255,77,109,.25);background:rgba(255,77,109,.05);}
+.result-inner.ratelimit{border-color:rgba(249,115,22,.25);background:rgba(249,115,22,.05);}
+.result-icon{width:36px;height:36px;flex-shrink:0;border-radius:10px;display:grid;place-items:center;font-size:1rem;}
+.result-inner.success .result-icon{background:var(--green-dim);}
+.result-inner.error   .result-icon{background:rgba(255,77,109,.15);}
+.result-inner.ratelimit .result-icon{background:var(--orange-dim);}
+.result-body{flex:1;min-width:0;}
+.result-caption{font-family:var(--mono);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:.3rem;}
+.result-url{font-family:var(--mono);font-size:.88rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.result-url a{color:var(--cyan);text-decoration:none;}
+.result-url a:hover{text-decoration:underline;}
+.result-expiry{font-family:var(--mono);font-size:.68rem;color:var(--orange);margin-top:.25rem;}
+.result-err-text{font-size:.85rem;color:var(--red);}
+.result-rate-text{font-size:.85rem;color:var(--orange);}
+.btn-copy{flex-shrink:0;background:transparent;border:1px solid var(--glass-border);border-radius:10px;padding:.5rem 1rem;font-family:var(--mono);font-size:.72rem;color:var(--text);cursor:pointer;transition:all .15s;white-space:nowrap;}
+.btn-copy:hover{background:var(--glass-hover);}
+.btn-copy.ok{background:var(--green-dim);border-color:rgba(16,217,160,.3);color:var(--green);}
+
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:2rem;animation:fadeUp .8s .16s cubic-bezier(.16,1,.3,1) both;}
+.stat-box{background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:1.2rem 1.5rem;text-align:center;}
+.stat-num{font-size:1.8rem;font-weight:800;letter-spacing:-.03em;background:linear-gradient(135deg,#fff,var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;display:block;}
+.stat-label{font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-top:.25rem;display:block;}
+
+/* Section */
+.section-head{display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem;animation:fadeUp .85s .2s cubic-bezier(.16,1,.3,1) both;}
+.section-head h2{font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-family:var(--mono);white-space:nowrap;}
+.section-line{flex:1;height:1px;background:var(--glass-border);}
+
+/* History */
+.history{animation:fadeUp .9s .24s cubic-bezier(.16,1,.3,1) both;}
+.link-card{display:flex;align-items:center;gap:1rem;background:var(--glass);border:1px solid var(--glass-border);border-radius:16px;padding:1rem 1.25rem;margin-bottom:.75rem;transition:background .2s,border-color .2s,transform .15s;animation:fadeUp .4s cubic-bezier(.16,1,.3,1) both;}
+.link-card:hover{background:var(--glass-hover);border-color:rgba(255,255,255,.12);transform:translateY(-1px);}
+.link-card.expired{opacity:.5;border-color:rgba(255,77,109,.2);}
+.code-chip{flex-shrink:0;font-family:var(--mono);font-size:.75rem;font-weight:500;background:linear-gradient(135deg,var(--cyan-dim),var(--violet-dim));border:1px solid rgba(0,212,255,.2);color:var(--cyan);padding:.35rem .8rem;border-radius:8px;letter-spacing:.04em;white-space:nowrap;}
+.code-chip.expired{background:rgba(255,77,109,.08);border-color:rgba(255,77,109,.2);color:var(--red);}
+.link-info{flex:1;min-width:0;}
+.link-original{font-family:var(--mono);font-size:.75rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:.3rem;}
+.link-meta{display:flex;align-items:center;gap:.75rem;font-family:var(--mono);font-size:.62rem;color:var(--muted2);flex-wrap:wrap;}
+.link-meta .hits{color:var(--cyan);font-weight:500;}
+.link-meta .expiry{color:var(--orange);}
+.link-meta .expired-tag{color:var(--red);}
+.link-actions{display:flex;gap:.5rem;flex-shrink:0;}
+.btn-sm{background:transparent;border:1px solid var(--glass-border);border-radius:8px;padding:.3rem .7rem;font-family:var(--mono);font-size:.65rem;color:var(--muted);cursor:pointer;transition:all .15s;}
+.btn-sm:hover{background:var(--glass-hover);color:var(--text);border-color:rgba(255,255,255,.15);}
+.btn-sm.ok{background:var(--green-dim);border-color:rgba(16,217,160,.25);color:var(--green);}
+
+.empty{text-align:center;padding:4rem 0;}
+.empty-icon{width:64px;height:64px;border-radius:20px;background:var(--glass);border:1px solid var(--glass-border);display:grid;place-items:center;font-size:1.6rem;margin:0 auto 1.25rem;}
+.empty p{font-size:.85rem;color:var(--muted);line-height:1.7;}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:none;}}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes pulsedot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.5;transform:scale(.7);}}
+
+@media(max-width:520px){
+  .input-row{flex-direction:column;}
+  .btn-shorten{width:100%;}
+  .stats-row{grid-template-columns:repeat(3,1fr);}
+  .stat-box{padding:.85rem .75rem;}
+  .stat-num{font-size:1.4rem;}
+}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div class="shell">
+  <nav>
+    <div class="logo">SN<span class="logo-dot">I</span>P</div>
+    <div class="nav-pill">URL Shortener</div>
+  </nav>
+
+  <div class="hero">
+    <div class="hero-tag"><span class="hero-tag-dot"></span> Instant link shortening</div>
+    <h1>Short links,<br/>big impact.</h1>
+    <p>Paste any URL, set an optional expiry, and get a clean shareable link instantly.</p>
+  </div>
+
+  <div class="card">
+    <span class="input-label">Paste your URL</span>
+    <div class="input-row">
+      <input class="url-input" id="urlInput" type="url" placeholder="https://example.com/very/long/path?with=params" autocomplete="off" spellcheck="false"/>
+      <button class="btn-shorten" id="shortenBtn" onclick="shortenUrl()">Shorten &#8594;</button>
+    </div>
+    <div class="ttl-row">
+      <span class="input-label" style="margin:0">Expires in</span>
+      <input class="ttl-input" id="ttlInput" type="number" min="1" placeholder="e.g. 60"/>
+      <span class="ttl-hint">minutes &nbsp;(leave blank = never)</span>
+    </div>
+    <div class="result" id="result">
+      <div style="height:.75rem"></div>
+      <div class="result-inner" id="resultInner">
+        <div class="result-icon" id="resultIcon"></div>
+        <div class="result-body">
+          <div class="result-caption" id="resultCaption"></div>
+          <div class="result-url" id="resultUrl"></div>
+          <div class="result-expiry" id="resultExpiry"></div>
+        </div>
+        <button class="btn-copy" id="copyBtn" onclick="copyMain()">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-box"><span class="stat-num" id="statTotal">0</span><span class="stat-label">Links created</span></div>
+    <div class="stat-box"><span class="stat-num" id="statClicks">0</span><span class="stat-label">Total clicks</span></div>
+    <div class="stat-box"><span class="stat-num" id="statToday">0</span><span class="stat-label">Today</span></div>
+  </div>
+
+  <div class="section-head">
+    <div class="section-line"></div>
+    <h2>Recent links</h2>
+    <div class="section-line"></div>
+  </div>
+  <div class="history" id="history">
+    <div class="empty">
+      <div class="empty-icon">&#9988;&#65039;</div>
+      <p>Your shortened links will appear here.<br/>Start by pasting a URL above.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var canvas=document.getElementById('bg-canvas'),ctx=canvas.getContext('2d'),W,H,orbs;
+  function resize(){W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;}
+  function mkOrb(){return{x:Math.random()*W,y:Math.random()*H,r:200+Math.random()*300,vx:(Math.random()-.5)*.18,vy:(Math.random()-.5)*.18,hue:Math.random()<.5?190:260,a:.04+Math.random()*.05};}
+  function init(){resize();orbs=Array.from({length:5},mkOrb);}
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    orbs.forEach(function(o){
+      var g=ctx.createRadialGradient(o.x,o.y,0,o.x,o.y,o.r);
+      g.addColorStop(0,'hsla('+o.hue+',90%,60%,'+o.a+')');g.addColorStop(1,'transparent');
+      ctx.beginPath();ctx.arc(o.x,o.y,o.r,0,Math.PI*2);ctx.fillStyle=g;ctx.fill();
+      o.x+=o.vx;o.y+=o.vy;
+      if(o.x<-o.r||o.x>W+o.r)o.vx*=-1;if(o.y<-o.r||o.y>H+o.r)o.vy*=-1;
+    });requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize',resize);init();draw();
+})();
+
+var BASE=window.location.origin,lastShort='';
+
+function shortenUrl(){
+  var input=document.getElementById('urlInput');
+  var ttlInput=document.getElementById('ttlInput');
+  var btn=document.getElementById('shortenBtn');
+  var url=input.value.trim();
+  if(!url){showErr('Please paste a URL first.');return;}
+  btn.disabled=true;btn.classList.add('loading');
+  var body={url:url};
+  if(ttlInput.value.trim())body.ttlMinutes=Number(ttlInput.value.trim());
+  fetch(BASE+'/api/shorten',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,status:r.status,data:d};});})
+    .then(function(res){
+      if(res.status===429){showRateLimit(res.data);return;}
+      if(!res.ok){showErr(res.data.error||'Something went wrong.');return;}
+      lastShort=res.data.shortUrl;
+      showOk(res.data);
+      input.value='';ttlInput.value='';
+      loadHistory();
+    })
+    .catch(function(){showErr('Could not connect to server.');})
+    .finally(function(){btn.disabled=false;btn.classList.remove('loading');});
+}
+
+function openResult(){document.getElementById('result').classList.add('open');}
+
+function showOk(data){
+  document.getElementById('resultInner').className='result-inner success';
+  document.getElementById('resultIcon').textContent='\u2713';
+  document.getElementById('resultCaption').textContent='Your link is ready';
+  document.getElementById('resultUrl').innerHTML='<a href="'+data.shortUrl+'" target="_blank">'+data.shortUrl+'</a>';
+  var exp=document.getElementById('resultExpiry');
+  exp.textContent=data.expiresAt&&data.expiresAt!=='never'?'Expires: '+new Date(data.expiresAt).toLocaleString():'';
+  var cb=document.getElementById('copyBtn');cb.style.display='';cb.textContent='Copy';cb.className='btn-copy';
+  openResult();
+}
+
+function showErr(msg){
+  document.getElementById('resultInner').className='result-inner error';
+  document.getElementById('resultIcon').textContent='!';
+  document.getElementById('resultCaption').textContent='Error';
+  document.getElementById('resultUrl').innerHTML='<span class="result-err-text">'+msg+'</span>';
+  document.getElementById('resultExpiry').textContent='';
+  document.getElementById('copyBtn').style.display='none';
+  openResult();
+}
+
+function showRateLimit(data){
+  document.getElementById('resultInner').className='result-inner ratelimit';
+  document.getElementById('resultIcon').textContent='&#9888;';
+  document.getElementById('resultCaption').textContent='Rate Limit Exceeded';
+  document.getElementById('resultUrl').innerHTML='<span class="result-rate-text">'+data.message+'</span>';
+  document.getElementById('resultExpiry').textContent='Retry after '+data.retryAfter+' seconds';
+  document.getElementById('copyBtn').style.display='none';
+  openResult();
+}
+
+function copyMain(){
+  if(!lastShort)return;
+  navigator.clipboard.writeText(lastShort).then(function(){
+    var b=document.getElementById('copyBtn');
+    b.textContent='\u2713 Copied';b.classList.add('ok');
+    setTimeout(function(){b.textContent='Copy';b.classList.remove('ok');},2000);
+  });
+}
+
+function copyLink(url,btn){
+  navigator.clipboard.writeText(url).then(function(){
+    btn.textContent='\u2713';btn.classList.add('ok');
+    setTimeout(function(){btn.textContent='Copy';btn.classList.remove('ok');},1800);
+  });
+}
+
+function timeAgo(iso){
+  var s=Math.floor((Date.now()-new Date(iso))/1000);
+  if(s<60)return'just now';if(s<3600)return Math.floor(s/60)+'m ago';
+  if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';
+}
+
+function isToday(iso){
+  var d=new Date(iso),n=new Date();
+  return d.getDate()===n.getDate()&&d.getMonth()===n.getMonth()&&d.getFullYear()===n.getFullYear();
+}
+
+function loadHistory(){
+  fetch(BASE+'/api/urls')
+    .then(function(r){return r.json();})
+    .then(function(data){
+      var totalClicks=data.reduce(function(a,i){return a+i.hits;},0);
+      var todayCount=data.filter(function(i){return isToday(i.createdAt);}).length;
+      document.getElementById('statTotal').textContent=data.length;
+      document.getElementById('statClicks').textContent=totalClicks;
+      document.getElementById('statToday').textContent=todayCount;
+      var el=document.getElementById('history');
+      if(!data.length){
+        el.innerHTML='<div class="empty"><div class="empty-icon">&#9988;&#65039;</div><p>Your shortened links will appear here.<br/>Start by pasting a URL above.</p></div>';
+        return;
+      }
+      el.innerHTML=data.map(function(item,i){
+        var expired=item.expired;
+        var expiryText=item.expiresAt==='never'?'no expiry':
+          expired?'<span class="expired-tag">expired</span>':
+          'expires '+new Date(item.expiresAt).toLocaleString();
+        return '<div class="link-card'+(expired?' expired':'')+'" style="animation-delay:'+i*40+'ms">'+
+          '<div class="code-chip'+(expired?' expired':'')+'">'+item.shortCode+'</div>'+
+          '<div class="link-info">'+
+            '<div class="link-original" title="'+item.originalUrl+'">'+item.originalUrl+'</div>'+
+            '<div class="link-meta">'+
+              '<span>'+timeAgo(item.createdAt)+'</span><span>&middot;</span>'+
+              '<span class="hits">'+item.hits+' click'+(item.hits!==1?'s':'')+'</span><span>&middot;</span>'+
+              '<span class="expiry">'+expiryText+'</span>'+
+            '</div>'+
+          '</div>'+
+          '<div class="link-actions">'+
+            (!expired?'<button class="btn-sm" onclick="window.open(\''+BASE+'/'+item.shortCode+'\',\'_blank\')">Open</button>':'')+
+            '<button class="btn-sm" onclick="copyLink(\''+BASE+'/'+item.shortCode+'\',this)">Copy</button>'+
+          '</div>'+
+        '</div>';
+      }).join('');
+    }).catch(function(){});
+}
+
+document.getElementById('urlInput').addEventListener('keydown',function(e){if(e.key==='Enter')shortenUrl();});
+loadHistory();
+</script>
+</body>
+</html>
