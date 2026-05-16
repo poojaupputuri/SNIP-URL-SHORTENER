@@ -1,0 +1,6 @@
+{
+  "name": "snip-url-shortener",
+  "version": "1.0.0",
+  "description": "SNIP — URL Shortener (All 5 Subtasks)",
+  "engines": { "node": "20.x" }
+}

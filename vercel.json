@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    { "source": "/api/shorten",        "destination": "/api/shorten"             },
+    { "source": "/api/urls",           "destination": "/api/urls"                },
+    { "source": "/api/analytics/:code","destination": "/api/analytics?code=:code"},
+    { "source": "/:code",              "destination": "/api/redirect?code=:code" }
+  ]
+}
